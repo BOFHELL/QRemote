@@ -59,6 +59,11 @@ def build_xml(data):
 
     return header
 
+
+
+#############
+## cmds:
+##  ACK  ListQPKG  GetIcon  Launch  KillAll  GetCurrentUser  Login2  Logout  SetAutoLogin  GetQTVSetting
 def sendBack(cmd, con, V=0, ACK_DATA=''):
         V+=1
         root = ET.fromstring(cmd)
@@ -67,7 +72,7 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
             cmd_switch=cmd_xml.text
         
         print("=== INSTANCE: {} =====".format(V))
-        #print("Empfangen {} CMD:>>{}<<".format(V, cmd))
+        print("Empfangen {} CMD:>>{}<<".format(V, cmd))
         #print("=============")
         #QDocRoot version="1.1" 
         if cmd_switch=="ListQPKG":         ### WAiT FOR    ACK  
