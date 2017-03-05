@@ -1,12 +1,6 @@
 import socket, select
 import xml.etree.ElementTree as ET
 import subprocess
-#import os
-
-from dict2xml import dict2xml as xmlify
-from collections import OrderedDict
-
-
 
 ###############
 ## DEFINE APPS 
@@ -50,7 +44,6 @@ def build_apps():
     dPrint("========== SORT ========")
     FIELDS=["name","displayName","version","uuid","icon_phone","icon_pad"]
     retstr=''
-    
     for app in apps:
         retstr+="<item>"
         for f in FIELDS:
@@ -61,16 +54,12 @@ def build_apps():
         retstr='<errRtn>success</errRtn>'+retstr
     return retstr
 
-
 def build_xml(data):
     ret_xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     ret_xml +='<QDocRoot version="1.1">'
     ret_xml += data
     ret_xml +='</QDocRoot>'
-
     return ret_xml
-
-
 
 #############
 ## cmds:
@@ -83,25 +72,16 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
             cmd_switch=cmd_xml.text
         
         dPrint("=== INSTANCE: {} =====".format(V))
-        dPrint("Empfangen {} CMD:>>{}<<".format(V, cmd))
-        #dPrint("=============")
         #QDocRoot version="1.1" 
         if cmd_switch=="ListQPKG":         ### WAiT FOR    ACK  
             dPrint("[DEBUG]: ListQPKG ====> cmd: {}".format(cmd))
             #### Check if all fine - > we say allways YES :D and build sending xml, to count and send first
             # Cli -> List -> SRV : ListQPKG | Srv -> size < return bytes xmls -> send xml
             ACK_SEND_xml=build_xml(build_apps())
-
-            dPrint("Konstruckt {}".format(ACK_SEND_xml))
-            
             size_data =  '<size>{}</size>'.format(len(ACK_SEND_xml))
-            ## 
             # Send Size from APPS XML file
             size_xml = build_xml('<size>{}</size>'.format(len(ACK_SEND_xml))) 
-            
-            #^size_xml=header+'<QDocRoot version="1.1"><size>293</size></QDocRoot>'
             dPrint("SENDE ===> SIZE ARRAY: {}".format(size_xml) )
-            
             con.sendall( size_xml )
 
         #############
@@ -124,9 +104,8 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
         #######
         ## ACK 
         if cmd_switch=="ACK":
-            #dPrint("[DEBUG]: ACK ====> cmd: {}".format(cmd))
-            #dPrint("SENDE ===> ACK: {}".format(ACK_DATA))
-            #dPrint(" SENDE LEN: {}".format(len(ACK_DATA)))
+            dPrint("[DEBUG]: ACK ====> cmd: {}".format(cmd))
+            dPrint(" SEND LEN: {}".format(len(ACK_DATA)))
             con.sendall( ACK_DATA )
 
         ###################
@@ -140,15 +119,11 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
             dPrint(" [GetIcon]: params ====> {}".format(params))
             app_uuid=params[0]
             app_icon=params[1]
-            dPrint("APPID {} ICON FUER {}".format(app_uuid,app_icon))
             #### abkuerzen  app_uuid, app_icon=list(params)  ??i
             app=(item for item in apps if item["uuid"] == app_uuid).next()
-            dPrint("Gefunden APP {}".format(app))
             if app:
                 dPrint(" try to get Icon: {}".format(app['icon_'+app_icon]))
                 fIcon=open(app['icon_'+app_icon]).read()
-                dPrint("opened")
-                dPrint("array size")
                 fsize_xml = build_xml('<size>{}</size>'.format(len(fIcon))) 
                 dPrint(" [GetIcon] SENDE ===> SIZE ARRAY: {}".format(fsize_xml) )
                 con.sendall ( fsize_xml )
@@ -169,13 +144,8 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
         if ACK:
             #dPrint("[DEBUG]: ACK REV {}".format(ACK))
             #dPrint("====== WILL SEND: ")
-
             #dPrint(ACK_SEND_xml)
-
             sendBack(ACK, con, V, ACK_SEND_xml)
-        dPrint("=============")
-
-
 
 if __name__ == "__main__":
 
@@ -189,18 +159,15 @@ if __name__ == "__main__":
     server_socket.bind(("0.0.0.0", PORT))
     server_socket.listen(10)
  
-    # Add server socket to the list of readable connections
     CONNECTION_LIST.append(server_socket)
      
     while True:
         try:
-            # Get the list sockets which are ready to be read through select
             read_sockets,write_sockets,error_sockets = select.select(CONNECTION_LIST,[],[])
             
             for sock in read_sockets:
                 #New connection
                 if sock == server_socket:
-                    # Handle the case in which there is a new connection recieved through server_socket
                     sockfd, addr = server_socket.accept()
                     CONNECTION_LIST.append(sockfd)
                     dPrint ("Client (%s, %s) connected" % addr)
@@ -208,22 +175,10 @@ if __name__ == "__main__":
                 #Some incoming message from a client
                 else:
                     try:
-                        #In Windows, sometimes when a TCP program closes abruptly,
-                        # a "Connection reset by peer" exception will be thrown
                         data = sock.recv(RECV_BUFFER)
                         # echo back the client message
                         if data:
-                            #root = ET.fromstring(data)
-                            #for cmd_xml in root.findall("cmd"):
-                            #    cmd=cmd_xml.text
-                            #sendBack(cmd, sock)
                             sendBack(data, sock)
-                            #dPrint(" REV ===== {}".format(data))
-                            #header='<?xml version="1.0" encoding="UTF-8"?>\n'
-                            #header+='<QDocRoot version="1.1"><size>293</size></QDocRoot>'
-                            #sock.send(header)
-
-                        # client disconnected, so remove from socket list
                     except:
                         dPrint("Socket error")
                         sock.close()
