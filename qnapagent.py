@@ -1,5 +1,6 @@
 import socket, select
 import xml.etree.ElementTree as ET
+import os
 
 from dict2xml import dict2xml as xmlify
 from collections import OrderedDict
@@ -8,15 +9,22 @@ from collections import OrderedDict
 
 ###############
 ## DEFINE APPS 
+## Icon Size:
+##  phone:  256x256
+##  pad:    350x350
+##  tv:     380x380
 ##############
 
+
 apps = [{
-    'name':'Koodii',
+    'name':'Kodi',
     'displayName':'Kodi',
-    'version':'3.0.6',
+    'version':'17',
     'uuid':'AAPN82NZmp3lo',
-    'icon_phone':'qtv/mykodi17_phone.png',
-    'icon_pad':'yes'
+    'icon_phone':'icons/kodi_phone.png',
+    'icon_pad':'yes',
+    'start':'/usr/bin/kodi',
+    'stop':'killall -9 kodi.bin'
     }]
   #  ,
   #  {
@@ -30,13 +38,14 @@ apps = [{
 
 
 
-def sortchildrenby(parent, attr):
-    parent[:] = sorted(parent, key=lambda child: child.get(attr))
-
+def dPrint(msg):
+    DEBUG=False
+    if DEBUG:
+        dPrint(msg)
 
 
 def build_apps():
-    print("========== SORT ========")
+    dPrint("========== SORT ========")
     FIELDS=["name","displayName","version","uuid","icon_phone","icon_pad"]
 
     
@@ -52,12 +61,12 @@ def build_apps():
 
 
 def build_xml(data):
-    header = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    header +='<QDocRoot version="1.1">'
-    header += data
-    header +='</QDocRoot>'
+    ret_xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    ret_xml +='<QDocRoot version="1.1">'
+    ret_xml += data
+    ret_xml +='</QDocRoot>'
 
-    return header
+    return ret_xml
 
 
 
@@ -71,84 +80,98 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
         for cmd_xml in root.findall("cmd"):
             cmd_switch=cmd_xml.text
         
-        print("=== INSTANCE: {} =====".format(V))
-        print("Empfangen {} CMD:>>{}<<".format(V, cmd))
-        #print("=============")
+        dPrint("=== INSTANCE: {} =====".format(V))
+        dPrint("Empfangen {} CMD:>>{}<<".format(V, cmd))
+        #dPrint("=============")
         #QDocRoot version="1.1" 
         if cmd_switch=="ListQPKG":         ### WAiT FOR    ACK  
-            print("[DEBUG]: ListQPKG ====> cmd: {}".format(cmd))
+            dPrint("[DEBUG]: ListQPKG ====> cmd: {}".format(cmd))
             #### Check if all fine - > we say allways YES :D and build sending xml, to count and send first
             # Cli -> List -> SRV : ListQPKG | Srv -> size < return bytes xmls -> send xml
-            #ACK_SEND_xml= header+xmlify(retc, wrap='QDocRoot', indent="  ",newlines=True)
-            #ACK_SEND_xml=header+xmlify(retc, wrap='QDocRoot', indent=None, newlines=False)
             ACK_SEND_xml=build_xml(build_apps())
 
-            #Ack=sort_xml(ACK_SEND_xml)
-
-            print("Konstruckt {}".format(ACK_SEND_xml))
-            #reply='<size>{}</size>'.format(len(header+app+footer))
-            #reply='<size>{}</size>'.format(len(xml))
+            dPrint("Konstruckt {}".format(ACK_SEND_xml))
+            
             size_data =  '<size>{}</size>'.format(len(ACK_SEND_xml))
             ## 
             # Send Size from APPS XML file
-            #size_xml = dicttoxml(size_array, custom_root='QDocRoot', attr_type=False)
-            print("D")
-            #size_xml = header+xmlify(size_array, wrap='QDocRoot', indent="   ", newlines=True)
             size_xml = build_xml('<size>{}</size>'.format(len(ACK_SEND_xml))) 
-            print("D")
             
             #^size_xml=header+'<QDocRoot version="1.1"><size>293</size></QDocRoot>'
-            print("SENDE ===> SIZE ARRAY: {}".format(size_xml) )
+            dPrint("SENDE ===> SIZE ARRAY: {}".format(size_xml) )
             
             con.sendall( size_xml )
 
-
-        if cmd_switch=="ACK":
-            print("[DEBUG]: ACK ====> cmd: {}".format(cmd))
-            print("SENDE ===> ACK: {}".format(ACK_DATA))
-            print(" SENDE LEN: {}".format(len(ACK_DATA)))
-            con.sendall( ACK_DATA )
-
-        if cmd_switch=='GetIcon':
-            print("[DEBUG]: GetIcon ====> cmd: {}".format(cmd))
+        #############
+        ## Launch App
+        if cmd_switch=="Launch":
+            dPrint("[DEBUG]: Launch ====> cmd: {}".format(cmd))
             params=[]
             for params_xml in root.findall("param"):
                 params.append(params_xml.text)
             #### Check App
-            print(" [GetIcon]: params ====> {}".format(params))
+            dPrint(" [Launch]: params ====> {}".format(params))
+            app_name=params[0]
+            #### abkuerzen  app_uuid, app_icon=list(params)  ??i
+            app=(item for item in apps if item["name"] == app_name).next()
+            if app:
+                startp=app['start']
+                dPrint(" [LAuNCh]: start ===== cmd: {}".format(startp))
+                os.system(startp)
+
+        #######
+        ## ACK 
+        if cmd_switch=="ACK":
+            #dPrint("[DEBUG]: ACK ====> cmd: {}".format(cmd))
+            #dPrint("SENDE ===> ACK: {}".format(ACK_DATA))
+            #dPrint(" SENDE LEN: {}".format(len(ACK_DATA)))
+            con.sendall( ACK_DATA )
+
+        ###################
+        ## GetIcon for App
+        if cmd_switch=='GetIcon':
+            dPrint("[DEBUG]: GetIcon ====> cmd: {}".format(cmd))
+            params=[]
+            for params_xml in root.findall("param"):
+                params.append(params_xml.text)
+            #### Check App
+            dPrint(" [GetIcon]: params ====> {}".format(params))
             app_uuid=params[0]
             app_icon=params[1]
-            print("APPID {} ICON FUER {}".format(app_uuid,app_icon))
+            dPrint("APPID {} ICON FUER {}".format(app_uuid,app_icon))
             #### abkuerzen  app_uuid, app_icon=list(params)  ??i
             app=(item for item in apps if item["uuid"] == app_uuid).next()
-            print("Gefunden APP {}".format(app))
+            dPrint("Gefunden APP {}".format(app))
             if app:
-                print(" try to get Icon: {}".format(app['icon_'+app_icon]))
+                dPrint(" try to get Icon: {}".format(app['icon_'+app_icon]))
                 fIcon=open(app['icon_'+app_icon]).read()
-                print("opened")
-                print("array size")
+                dPrint("opened")
+                dPrint("array size")
                 fsize_xml = build_xml('<size>{}</size>'.format(len(fIcon))) 
-                print(" [GetIcon] SENDE ===> SIZE ARRAY: {}".format(fsize_xml) )
+                dPrint(" [GetIcon] SENDE ===> SIZE ARRAY: {}".format(fsize_xml) )
                 con.sendall ( fsize_xml )
 
                 ACK_SEND_xml=fIcon
 
-
-        if cmd_switch=="KillALL":
-            print("OKEY, Killing all softly")
+        ###########################
+        ## KillAll -> run STOP cmd
+        if cmd_switch=="KillAll":
+            dPrint("[DEBUG]: KillAll ====> cmd: {}".format(cmd))
+            for item in apps:
+                os.system(item["stop"])
 
 
         #########################
         ## Handle return request
         ACK = con.recv(2048)
         if ACK:
-            #print("[DEBUG]: ACK REV {}".format(ACK))
-            #print("====== WILL SEND: ")
+            #dPrint("[DEBUG]: ACK REV {}".format(ACK))
+            #dPrint("====== WILL SEND: ")
 
-            #print(ACK_SEND_xml)
+            #dPrint(ACK_SEND_xml)
 
             sendBack(ACK, con, V, ACK_SEND_xml)
-        print("=============")
+        dPrint("=============")
 
 
 
@@ -178,7 +201,7 @@ if __name__ == "__main__":
                     # Handle the case in which there is a new connection recieved through server_socket
                     sockfd, addr = server_socket.accept()
                     CONNECTION_LIST.append(sockfd)
-                    print "Client (%s, %s) connected" % addr
+                    dPrint ("Client (%s, %s) connected" % addr)
 
                 #Some incoming message from a client
                 else:
@@ -193,19 +216,19 @@ if __name__ == "__main__":
                             #    cmd=cmd_xml.text
                             #sendBack(cmd, sock)
                             sendBack(data, sock)
-                            #print(" REV ===== {}".format(data))
+                            #dPrint(" REV ===== {}".format(data))
                             #header='<?xml version="1.0" encoding="UTF-8"?>\n'
                             #header+='<QDocRoot version="1.1"><size>293</size></QDocRoot>'
                             #sock.send(header)
 
                         # client disconnected, so remove from socket list
                     except:
-                        print("Socket error")
+                        dPrint("Socket error")
                         sock.close()
                         CONNECTION_LIST.remove(sock)
                         continue
 
         except (KeyboardInterrupt, SystemExit):
-            print("Keyboard Interrupt")
+            dPrint("Keyboard Interrupt")
             #server_socket.close()
             raise
