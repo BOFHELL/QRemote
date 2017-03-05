@@ -1,6 +1,7 @@
 import socket, select
 import xml.etree.ElementTree as ET
-import os
+import subprocess
+#import os
 
 from dict2xml import dict2xml as xmlify
 from collections import OrderedDict
@@ -20,37 +21,38 @@ apps = [{
     'name':'Kodi',
     'displayName':'Kodi',
     'version':'17',
-    'uuid':'AAPN82NZmp3lo',
+    'uuid':'k0di0wn',
     'icon_phone':'icons/kodi_phone.png',
     'icon_pad':'yes',
-    'start':'/usr/bin/kodi',
-    'stop':'killall -9 kodi.bin'
+    'start':'kodi',
+    'stop':'kodi.bin'
+    },
+    {
+    'name':'Chrome',
+    'displayName':'Chrome',
+    'version':'12',
+    'uuid':'ch0me',
+    'icon_phone':'icons/chrome_phone.png',
+    'icon_pad':'yes',
+    'start':'google-chrome-stable',
+    'stop':'chrome'
     }]
-  #  ,
-  #  {
-  #  'name':'Youtube',
-  #  'displayName':'youtube',
-  #  'version':'1.0.6',
-  #  'uuid':'yumo3',
-  #  'icon_phone':'qtv/mykodi17_phone.png',
-  #  'icon_pad':'yes'
-  #  }]
 
 
 
 def dPrint(msg):
     DEBUG=False
     if DEBUG:
-        dPrint(msg)
+        print(msg)
 
 
 def build_apps():
     dPrint("========== SORT ========")
     FIELDS=["name","displayName","version","uuid","icon_phone","icon_pad"]
-
+    retstr=''
     
     for app in apps:
-        retstr="<item>"
+        retstr+="<item>"
         for f in FIELDS:
             retstr+=("<{}>"+app[f]+"</{}>").format(f,f)
         retstr+="</item>"
@@ -117,7 +119,7 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
             if app:
                 startp=app['start']
                 dPrint(" [LAuNCh]: start ===== cmd: {}".format(startp))
-                os.system(startp)
+                subprocess.Popen(startp)
 
         #######
         ## ACK 
@@ -158,7 +160,7 @@ def sendBack(cmd, con, V=0, ACK_DATA=''):
         if cmd_switch=="KillAll":
             dPrint("[DEBUG]: KillAll ====> cmd: {}".format(cmd))
             for item in apps:
-                os.system(item["stop"])
+                subprocess.call(['killall', '-3', item["stop"]])
 
 
         #########################
